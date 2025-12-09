@@ -1,6 +1,5 @@
 <template>
   <div>
-    <Navbar />
     <div class="container py-5">
       <h1 class="mb-4">Product List</h1>
       <div class="row">
@@ -23,7 +22,6 @@
 </template>
 
 <script setup>
-import Navbar from '@/components/Navbar.vue'
 import { useCartStore } from '@/stores/cart'
 
 const products = [

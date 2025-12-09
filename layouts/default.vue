@@ -1,5 +1,6 @@
 <template>
   <div>
+    <Navbar />
     <NuxtPage />
     <div v-if="cartModalVisible" class="cart-modal position-fixed top-0 end-0 h-100 bg-white shadow-lg" style="width: 400px; z-index: 1050; transition: right 0.3s;">
       <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
@@ -29,10 +30,14 @@
   </div>
 </template>
 
+
 <script setup>
+import Navbar from '@/components/Navbar.vue'
 import { useCartStore } from '@/stores/cart'
 import { useCartModal } from '@/composables/cartModal'
 import { computed } from 'vue'
+import { currentUser } from '@/composables/userSession'
+import { addOrder } from '@/composables/orders'
 
 const cart = useCartStore()
 const { cartModalVisible, closeCart } = useCartModal()
@@ -42,7 +47,25 @@ function removeItem(id) {
   cart.remove(id)
 }
 function checkout() {
-  alert('Checkout not implemented.')
+  if (!currentUser.value) {
+    alert('Please login to place an order.')
+    return
+  }
+  if (cart.items.length === 0) {
+    alert('Your cart is empty.')
+    return
+  }
+  // Generate a unique order id (timestamp + random)
+  const orderId = Date.now() + '-' + Math.floor(Math.random() * 10000)
+  addOrder({
+    id: orderId,
+    userEmail: currentUser.value.email,
+    date: new Date(),
+    items: cart.items.map(item => ({ ...item }))
+  })
+  cart.clear()
+  closeCart()
+  alert('Order placed successfully!')
 }
 </script>
 
