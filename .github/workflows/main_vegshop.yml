@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: read #This is required for actions/checkout
 
@@ -28,7 +28,7 @@ jobs:
           npm install
           npm run build --if-present
           npm run test --if-present
-      
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
@@ -51,13 +51,13 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_AC65F4D624F84937A57E17C79EB7A546 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_472D577140CD4018A4E7379342B2DBB1 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_E19E779EC3B544FF8A84D36A4EDB8002 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_EFDC52B3CF5C4E999160C607DF0A2B0A }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_937D48A8A3AC483AB535F542D6F5E740 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_04AF6C6784EE47CAAD0B676095650D96 }}
 
       - name: 'Deploy to Azure Web App'
-        uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
         with:
           app-name: 'VegShop'
           slot-name: 'Production'
