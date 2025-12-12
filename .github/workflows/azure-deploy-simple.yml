@@ -1,0 +1,67 @@
+name: Simple build & deploy to Azure Web App
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Prepare artifact
+        run: |
+          set -e
+          rm -f app.zip || true
+          rm -rf artifact || true
+          mkdir -p artifact
+          # Copy runtime files (Nuxt 4 output)
+          cp -R package.json nuxt.config.* public static .output ./artifact 2>/dev/null || true
+          # Add a minimal pm2 ecosystem so pm2-runtime can be used by App Service
+          cat > artifact/ecosystem.config.cjs <<'EOC'
+module.exports = {
+  apps: [{
+    name: 'nuxt-app',
+    script: '.output/server/index.mjs',
+    interpreter: 'node',
+    env_production: { NODE_ENV: 'production' }
+  }]
+}
+EOC
+          pushd artifact
+          if [ -f ../package-lock.json ]; then
+            npm ci --omit=dev --no-audit --no-fund
+          else
+            npm install --production --no-audit --no-fund
+          fi
+          npm install pm2 --no-audit --no-fund --no-save
+          popd
+          cd artifact && zip -r ../app.zip .
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: app.zip
+
+# Notes:
+# - Add repository secrets `AZURE_WEBAPP_PUBLISH_PROFILE` (publish profile XML) and `AZURE_WEBAPP_NAME`.
+# - Configure the Azure Web App startup command (Linux) to:
+#     node node_modules/pm2/bin/pm2-runtime ecosystem.config.cjs
+#   Or let App Service use `npm start` if you keep the `start` script in `package.json`.
