@@ -1,0 +1,97 @@
+name: Build and deploy Nuxt app to Azure Web App
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy (overrides push ref when manually triggered)'
+        required: false
+        default: 'main'
+      node-version:
+        description: 'Node version to use'
+        required: false
+        default: '20'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      # Set runtime environment for packaged app
+      NODE_ENV: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # allow manual dispatch to override branch
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ github.event.inputs.node-version || '20' }}
+
+      - name: Install dependencies (for build)
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Package app for deployment (include Nuxt 4 output and PM2)
+        env:
+          NODE_ENV: production
+        run: |
+          set -e
+          rm -f app.zip || true
+          rm -rf artifact || true
+          mkdir -p artifact
+          # Copy files required for Nuxt 4 deployment
+          cp -R package.json package-lock.json nuxt.config.js nuxt.config.ts public static .output ./artifact 2>/dev/null || true
+          # Do not copy node_modules to keep artifact small. Install production deps inside artifact below.
+          # Create a PM2 ecosystem file so runtime can use pm2-runtime
+          cat > artifact/ecosystem.config.cjs <<'EOC'
+module.exports = {
+  apps: [
+    {
+      name: process.env.AZURE_WEBAPP_NAME || 'nuxt-app',
+      script: '.output/server/index.mjs',
+      interpreter: 'node',
+      env_production: {
+        NODE_ENV: 'production'
+      }
+    }
+  ]
+}
+EOC
+
+          # Install production dependencies inside the artifact to reduce zip size
+          if [ -d artifact ]; then
+            pushd artifact
+            # Use npm ci if lockfile exists; omit dev deps to keep production-only modules
+            if [ -f package-lock.json ]; then
+              npm ci --omit=dev --no-audit --no-fund
+            else
+              npm install --production --no-audit --no-fund
+            fi
+            # Ensure pm2 is available for pm2-runtime
+            npm install pm2 --no-audit --no-fund --no-save
+            popd
+          fi
+
+          cd artifact || exit 0
+          zip -r ../app.zip .
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: app.zip
+
+# Notes:
+# - Before using this workflow, add the following repository secrets in GitHub:
+#   * `AZURE_WEBAPP_PUBLISH_PROFILE` - the publish profile XML from your Azure Web App (from the Azure Portal -> Get publish profile)
+#   * `AZURE_WEBAPP_NAME` - the name of your Azure Web App
+# - Ensure `package.json` contains a `start` script that launches your Nuxt app (for SSR: `nuxt start` or equivalent).
+# - Adjust the files copied into `artifact` if your project structure or build outputs differ (Nuxt 2 vs Nuxt 3).

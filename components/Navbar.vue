@@ -14,6 +14,9 @@
           <li class="nav-item">
             <NuxtLink class="nav-link" to="/products">Products</NuxtLink>
           </li>
+          <li v-if="isLoggedIn" class="nav-item">
+            <NuxtLink class="nav-link" to="/orders">Orders</NuxtLink>
+          </li>
         </ul>
         <ul class="navbar-nav align-items-center">
           <li class="nav-item me-3">
@@ -51,6 +54,7 @@ const cart = useCartStore()
 const cartCount = computed(() => cart.items.reduce((sum, item) => sum + item.quantity, 0))
 const router = useRouter()
 const dropdownOpen = ref(false)
+const isLoggedIn = computed(() => !!currentUser.value)
 function emitCartOpen() {
   cartModalVisible.value = true
 }

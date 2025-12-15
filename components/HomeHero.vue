@@ -1,6 +1,7 @@
 <template>
-  <div class="home-hero position-relative text-center">
-    <img src="https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=1920&q=80" class="bg-img" alt="Shopping">
+  <div class="home-hero position-relative text-center" role="img" aria-label="Fruits and vegetables background">
+    <div class="hero-bg" />
+    <div class="hero-overlay" />
     <div class="hero-content position-absolute top-50 start-50 translate-middle">
       <h1 class="display-4 fw-bold text-white mb-4">Welcome to ShopCart</h1>
       <NuxtLink to="/products" class="btn btn-primary btn-lg">Shop Now</NuxtLink>
@@ -19,16 +20,27 @@
   height: 100vh;
   overflow: hidden;
 }
-.bg-img {
+.hero-bg {
   position: absolute;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  object-fit: cover;
+  background-image: url('https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1920&q=80');
+  background-size: cover;
+  background-position: center;
   z-index: 1;
 }
-.hero-content {
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35));
   z-index: 2;
+}
+.hero-content {
+  z-index: 3;
 }
 </style>
