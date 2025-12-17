@@ -11,9 +11,11 @@
           <label for="password" class="form-label">Password</label>
           <input type="password" v-model="password" class="form-control" id="password" required>
         </div>
-        <button type="submit" class="btn btn-primary w-100">Login</button>
+        <button type="submit" class="btn btn-primary w-100" :disabled="isLoading">
+          {{ isLoading ? 'Logging in...' : 'Login' }}
+        </button>
       </form>
-      <div v-if="error" class="alert alert-danger mt-3">{{ error }}</div>
+      <div v-if="authError" class="alert alert-danger mt-3">{{ authError }}</div>
       <div class="mt-3 text-center">
         <NuxtLink to="/register" class="link-primary">New user? Register here</NuxtLink>
       </div>
@@ -23,26 +25,21 @@
 
 <script setup>
 import { ref } from 'vue'
-
-import { findUser } from '@/composables/userStore'
-import { setCurrentUser } from '@/composables/userSession'
 import { useRouter } from 'vue-router'
-
+import { loginUser, authError } from '@/composables/auth'
 
 const email = ref('')
 const password = ref('')
-const error = ref('')
 const router = useRouter()
+const isLoading = ref(false)
 
-function login() {
-  // Check credentials against user list
-  const user = findUser(email.value, password.value)
-  if (user) {
-    error.value = ''
-    setCurrentUser(user)
+async function login() {
+  isLoading.value = true
+  const result = await loginUser(email.value, password.value)
+  isLoading.value = false
+
+  if (result) {
     router.push('/')
-  } else {
-    error.value = 'Invalid email or password.'
   }
 }
 </script>

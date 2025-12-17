@@ -23,83 +23,37 @@
 
 <script setup>
 import { useCartStore } from '@/stores/cart'
-
-const products = [
-  {
-    id: 1,
-    name: 'Apple',
-    description: 'Fresh and juicy apples.',
-    price: 19.99,
-    image: 'https://images.unsplash.com/photo-1567306226416-28f0efdc88ce?auto=format&fit=crop&w=400&q=80'
-  },
-  {
-    id: 2,
-    name: 'Orange',
-    description: 'Sweet and tangy oranges.',
-    price: 29.99,
-    image: 'https://images.unsplash.com/photo-1502741338009-cac2772e18bc?auto=format&fit=crop&w=400&q=80'
-  },
-  {
-    id: 3,
-    name: 'Tomato',
-    description: 'Ripe and delicious tomatoes.',
-    price: 39.99,
-    image: 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80'
-  },
-  {
-    id: 4,
-    name: 'Banana',
-    description: 'Sweet and creamy bananas.',
-    price: 15.99,
-    image: 'https://images.unsplash.com/photo-1574226516831-e1dff420e8f8?auto=format&fit=crop&w=400&q=80'
-  },
-  {
-    id: 5,
-    name: 'Carrot',
-    description: 'Crunchy and healthy carrots.',
-    price: 12.99,
-    image: 'https://images.unsplash.com/photo-1506089676908-3592f7389d4d?auto=format&fit=crop&w=400&q=80'
-  },
-  {
-    id: 6,
-    name: 'Broccoli',
-    description: 'Fresh green broccoli.',
-    price: 18.99,
-    image: 'https://images.unsplash.com/photo-1502741126161-b048400d94b7?auto=format&fit=crop&w=400&q=80'
-  },
-  {
-    id: 7,
-    name: 'Strawberry',
-    description: 'Sweet and juicy strawberries.',
-    price: 25.99,
-    image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca4?auto=format&fit=crop&w=400&q=80'
-  },
-  {
-    id: 8,
-    name: 'Spinach',
-    description: 'Nutritious leafy spinach.',
-    price: 14.99,
-    image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80'
-  },
-  {
-    id: 9,
-    name: 'Grapes',
-    description: 'Fresh and sweet grapes.',
-    price: 22.99,
-    image: 'https://images.unsplash.com/photo-1519864600265-abb224a0e99c?auto=format&fit=crop&w=400&q=80'
-  },
-  {
-    id: 10,
-    name: 'Potato',
-    description: 'Versatile and tasty potatoes.',
-    price: 10.99,
-    image: 'https://images.unsplash.com/photo-1500315331616-db2aecd8a69e?auto=format&fit=crop&w=400&q=80'
-  }
-]
-
+import { ref, onMounted } from 'vue'
 const cart = useCartStore()
+const products = ref([])
+const loading = ref(true)
+const error = ref(null)
+
+const { $supabase } = useNuxtApp()
+
+async function fetchProducts() {
+  loading.value = true
+  const { data, error: fetchError } = await $supabase
+    .from('products')
+    .select('id, name, description, price, image_url')
+    .order('name', { ascending: true })
+  if (fetchError) {
+    error.value = fetchError.message
+    products.value = []
+  } else {
+    // Map image_url to image for compatibility with template
+    products.value = data.map(p => ({
+      ...p,
+      image: p.image_url
+    }))
+    error.value = null
+  }
+  loading.value = false
+}
 
 function addToCart(product) {
   cart.add(product)
 }
+
+onMounted(fetchProducts)
 </script>

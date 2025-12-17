@@ -1,9 +1,7 @@
 <template>
-  <div>
-    <button class="btn btn-outline-primary position-fixed top-0 end-0 m-4" @click="showCart = true">
-      View Cart
-    </button>
-    <div v-if="showCart" class="cart-modal position-fixed top-0 end-0 h-100 bg-white shadow-lg" style="width: 400px; z-index: 1050; transition: right 0.3s;">
+  <div v-if="showCart">
+    <div class="modal-backdrop fade show" style="z-index: 1040;" @click="showCart = false"></div>
+    <div class="cart-modal position-fixed top-0 end-0 h-100 bg-white shadow-lg" style="width: 400px; z-index: 1050; transition: right 0.3s;" @click.stop>
       <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
         <h4 class="mb-0">Your Cart</h4>
         <button class="btn-close" @click="showCart = false"></button>
@@ -27,11 +25,14 @@
         </div>
       </div>
     </div>
-    <div v-if="showCart" class="modal-backdrop fade show" style="z-index: 1040;" @click="showCart = false"></div>
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useCartStore } from '@/stores/cart'
+import { placeOrder, authError, authLoading } from '@/composables/auth'
+import { currentUser } from '@/composables/userSession'
 import { cartModalVisible } from '@/composables/cartModal'
 
 const showCart = cartModalVisible
@@ -50,16 +51,17 @@ async function checkout() {
     alert('Your cart is empty.')
     return
   }
-  // Place an order for each cart item (one row per product)
+  // Generate a single order_number for this checkout
+  const orderNumber = crypto.randomUUID ? crypto.randomUUID() : ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
   let allSuccess = true
-  console.log('Placing order for user:', currentUser.value.id)
   for (const item of cart.items) {
     const success = await placeOrder({
       userId: currentUser.value.id,
       productId: item.id,
       quantity: item.quantity,
       totalPrice: (item.price * item.quantity),
-      status: 'pending'
+      status: 'pending',
+      orderNumber
     })
     if (!success) {
       allSuccess = false

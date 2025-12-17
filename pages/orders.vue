@@ -5,10 +5,10 @@
       You have no previous orders.
     </div>
     <div v-else>
-      <div v-for="order in orders" :key="order.id" class="card mb-4 shadow order-card">
+      <div v-for="order in orders" :key="order.order_number" class="card mb-4 shadow order-card">
         <div class="card-header d-flex justify-content-between align-items-center bg-primary text-white">
-          <span>Order #{{ order.id }}</span>
-          <span>{{ formatDate(order.date) }}</span>
+          <span>Order #{{ order.order_number }}</span>
+          <span>{{ formatDate(order.created_at) }}</span>
         </div>
         <div class="card-body">
           <ul class="list-group list-group-flush">
@@ -23,7 +23,7 @@
           </ul>
         </div>
         <div class="card-footer text-end">
-          <span class="fw-bold">Total: ${{ orderTotal(order).toFixed(2) }}</span>
+          <span class="fw-bold">Total: ${{ order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2) }}</span>
         </div>
       </div>
     </div>
@@ -31,23 +31,59 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { currentUser } from '@/composables/userSession'
-import { allOrders } from '@/composables/orders'
+import { useNuxtApp } from '#app'
 
-const orders = computed(() => {
-  if (!currentUser.value) return []
-  return allOrders.value.filter(order => order.userEmail === currentUser.value.email)
-})
-
-function orderTotal(order) {
-  return order.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-}
+const orders = ref([])
+const loading = ref(false)
 
 function formatDate(date) {
-  if (!(date instanceof Date)) date = new Date(date)
-  return date.toLocaleString()
+  if (!date) return ''
+  return new Date(date).toLocaleString()
 }
+
+async function fetchOrders() {
+  if (!currentUser.value) return
+  loading.value = true
+  const { $supabase } = useNuxtApp()
+  // Fetch all order rows for this user, with product details
+  const { data, error } = await $supabase
+    .from('orders')
+    .select('id, created_at, total_price, quantity, status, product_id, order_number, product:product_id (id, name, price, description, image_url)')
+    .eq('user_id', currentUser.value.id)
+    .order('created_at', { ascending: false })
+  if (!error && data) {
+    // Group by order_number
+    const grouped = {};
+    for (const row of data) {
+      if (!grouped[row.order_number]) {
+        grouped[row.order_number] = {
+          order_number: row.order_number,
+          created_at: row.created_at,
+          status: row.status,
+          items: [],
+        };
+      }
+      grouped[row.order_number].items.push({
+        id: row.product?.id || row.product_id,
+        name: row.product?.name || 'Unknown',
+        price: row.product?.price || 0,
+        description: row.product?.description || '',
+        image: row.product?.image_url || '',
+        quantity: row.quantity,
+        total: row.total_price
+      });
+    }
+    // Convert to array and sort by created_at desc
+    orders.value = Object.values(grouped).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }
+  loading.value = false
+}
+
+onMounted(() => {
+  fetchOrders()
+})
 </script>
 
 <style scoped>

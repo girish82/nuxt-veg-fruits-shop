@@ -15,48 +15,41 @@
           <label for="password" class="form-label">Password</label>
           <input type="password" v-model="password" class="form-control" id="password" required>
         </div>
-        <button type="submit" class="btn btn-success w-100">Register</button>
+        <button type="submit" class="btn btn-success w-100" :disabled="isLoading">
+          {{ isLoading ? 'Registering...' : 'Register' }}
+        </button>
       </form>
-      <div v-if="error" class="alert alert-danger mt-3">{{ error }}</div>
+      <div v-if="authError" class="alert alert-danger mt-3">{{ authError }}</div>
       <div v-if="success" class="alert alert-success mt-3">{{ success }}</div>
+      <p class="text-center mt-3">
+        Already have an account? <NuxtLink to="/login">Login here</NuxtLink>
+      </p>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-
 import { useRouter } from 'vue-router'
-import { addUser, users } from '@/composables/userStore'
+import { registerUser, authError } from '@/composables/auth'
 
 const name = ref('')
 const email = ref('')
 const password = ref('')
-const error = ref('')
-const success = ref('')
 const router = useRouter()
+const isLoading = ref(false)
+const success = ref('')
 
-function register() {
-  // Simple mock registration logic
-  if (name.value && email.value && password.value) {
-    // Check if user already exists
-    if (users.value.some(u => u.email === email.value)) {
-      error.value = 'User with this email already exists.'
-      success.value = ''
-      return
-    }
-    addUser({ name: name.value, email: email.value, password: password.value })
-    error.value = ''
-    success.value = 'Registration successful! Redirecting to login...'
+async function register() {
+  isLoading.value = true
+  const result = await registerUser(email.value, password.value, name.value)
+  isLoading.value = false
+
+  if (result) {
+    success.value = 'Registration successful! Redirecting to home...'
     setTimeout(() => {
-      router.push('/login')
-    }, 1200)
-    name.value = ''
-    email.value = ''
-    password.value = ''
-  } else {
-    error.value = 'Please fill in all fields.'
-    success.value = ''
+      router.push('/')
+    }, 1500)
   }
 }
 </script>
